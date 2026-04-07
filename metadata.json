@@ -1,0 +1,5 @@
+{
+  "name": "Vox Admin Panel",
+  "description": "A clean, intuitive admin panel for reviewing and rejecting installation photo submissions for the VOX system.",
+  "requestFramePermissions": []
+}
