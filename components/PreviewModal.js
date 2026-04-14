@@ -103,7 +103,6 @@ const PreviewModal = ({ submission, user, onClose, onReject, onApprove, onSaved 
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError('');
-    setInvoiceUrl(refreshed.invoiceUrl || '');
     try {
       // 1️⃣  Send the multipart update (PUT)
       const formData = new FormData();
@@ -135,6 +134,7 @@ const PreviewModal = ({ submission, user, onClose, onReject, onApprove, onSaved 
       setComments(refreshed.reviewerComments || '');
       setInvoiceFile(null);
       setIsEditing(false);
+      setInvoiceUrl(refreshed.invoiceUrl || '');
 
       // Bubble up to parent so the card list re-renders too
       if (typeof onSaved === 'function') onSaved(refreshed);
