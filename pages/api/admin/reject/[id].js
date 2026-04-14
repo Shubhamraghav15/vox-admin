@@ -27,9 +27,9 @@ async function sendRejectionNotification({ phone, projectName, comments }) {
         );
 
         const body = comments
-            ? `VOX Master Installer: Your submission "${projectName}" was rejected.\nReviewer note: ${comments}\nPlease review and resubmit.`
-            : `VOX Master Installer: Your recent submission "${projectName}" REJECTED on VOX Master Installer App. Please reach out to VOX Support Team on VOX App.`;
-        // Your recent submission was REJECTED on VOX Master Installer App. Please reach out to VOX Support Team on VOX App.
+            ? `VOX PREMIER LEAGUE: Your submission "${projectName}" was rejected.\nReviewer note: ${comments}\nPlease review and resubmit.`
+            : `VOX PREMIER LEAGUE: Your recent submission "${projectName}" REJECTED on VOX PREMIER LEAGUE App. Please reach out to VOX Support Team on VOX App.`;
+        // Your recent submission was REJECTED on VOX PREMIER LEAGUE     App. Please reach out to VOX Support Team on VOX App.
         await client.messages.create({
             body,
             from: process.env.TWILIO_FROM_NUMBER,

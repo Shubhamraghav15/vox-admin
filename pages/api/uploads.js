@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const uploads = await Upload.find({})
       .populate({
         path: 'user',
-        select: 'name fullName phone city teamName points'
+        select: 'name fullName phone city teamName points isBlocked' // Include isBlocked to check if user is banned
       })
       .sort({ createdAt: -1 })
       .lean();
