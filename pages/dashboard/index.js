@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showToast, setShowToast] = useState(null);
-  
+
   const router = useRouter();
 
   const fetchData = React.useCallback(async () => {
@@ -25,7 +25,7 @@ export default function DashboardPage() {
     try {
       const response = await axios.get('/api/uploads');
       setData(response.data);
-      
+
       // Auto-select first user if none selected
       if (response.data.length > 0 && !selectedUserId) {
         setSelectedUserId(response.data[0].user._id);
@@ -67,14 +67,14 @@ export default function DashboardPage() {
             return {
               ...userData,
               user: response.data.user,
-              submissions: userData.submissions.map(sub => 
+              submissions: userData.submissions.map(sub =>
                 sub._id === uploadId ? { ...sub, status: 'approved' } : sub
               )
             };
           }
           return userData;
         }));
-        
+
         if (selectedSubmission?._id === uploadId) {
           setSelectedSubmission(prev => ({ ...prev, status: 'approved' }));
         }
@@ -88,26 +88,34 @@ export default function DashboardPage() {
       showToastMessage('Failed to approve submission', 'error');
     }
   };
-
+  const handleSubmissionSaved = (refreshed) => {
+    // Update selectedSubmission so PreviewModal prop stays in sync too
+    setSelectedSubmission(refreshed);
+    // Update the card list
+    setData(prev => prev.map(userData => ({
+      ...userData,
+      submissions: userData.submissions.map(sub =>
+        sub._id === refreshed._id ? refreshed : sub
+      ),
+    })));
+  };
   const handleReject = async (uploadId) => {
     try {
-      const response = await axios.post('/api/reject', { uploadId });
+      const response = await axios.post(`/api/admin/reject/${uploadId}`);
       if (response.data.success) {
-        // Update local state instantly
         setData(prevData => prevData.map(userData => {
           if (userData.user._id === response.data.user._id) {
             return {
               ...userData,
-              user: response.data.user, // Update user with new points/rejects
-              submissions: userData.submissions.map(sub => 
+              user: response.data.user,
+              submissions: userData.submissions.map(sub =>
                 sub._id === uploadId ? { ...sub, status: 'rejected' } : sub
               )
             };
           }
           return userData;
         }));
-        
-        // Update selected submission if it's the one being rejected
+
         if (selectedSubmission?._id === uploadId) {
           setSelectedSubmission(prev => ({ ...prev, status: 'rejected' }));
         }
@@ -121,7 +129,34 @@ export default function DashboardPage() {
       showToastMessage('Failed to reject submission', 'error');
     }
   };
+  // Add this handler in DashboardPage
+  const handleBlockUser = async (user) => {
+    const action = user.isBlocked ? 'unblock' : 'block';
+    if (!window.confirm(
+      user.isBlocked
+        ? `Unblock ${user.name || user.phone}? They can log in again.`
+        : `Block ${user.name || user.phone}? They will be locked out immediately.`
+    )) return;
 
+    try {
+      const res = await axios.patch(`/api/admin/user/${user._id}`, {
+        block: !user.isBlocked,
+      });
+      if (res.data.success) {
+        setData(prev => prev.map(item =>
+          item.user._id === user._id
+            ? { ...item, user: { ...item.user, isBlocked: res.data.isBlocked } }
+            : item
+        ));
+        showToastMessage(
+          `User ${res.data.isBlocked ? 'blocked' : 'unblocked'} successfully`,
+          'success'
+        );
+      }
+    } catch (err) {
+      showToastMessage('Failed to update block status', 'error');
+    }
+  };
   const handleBulkAction = async (uploadIds, action) => {
     setIsLoading(true);
     try {
@@ -129,11 +164,11 @@ export default function DashboardPage() {
       if (response.data.success) {
         // Refresh data to be safe since bulk updates are complex
         await fetchData();
-        
+
         // Calculate total points delta for the bulk action
         const totalDelta = response.data.results.reduce((sum, res) => sum + (res.delta || 0), 0);
         const deltaText = totalDelta >= 0 ? `+${totalDelta}` : totalDelta;
-        
+
         showToastMessage(`Bulk ${action} completed (${deltaText} pts total)`, 'success');
       }
     } catch (err) {
@@ -152,7 +187,7 @@ export default function DashboardPage() {
   const filteredData = useMemo(() => {
     if (!searchQuery) return data;
     const query = searchQuery.toLowerCase();
-    return data.filter(item => 
+    return data.filter(item =>
       (item.user.fullName || '').toLowerCase().includes(query) ||
       (item.user.name || '').toLowerCase().includes(query) ||
       (item.user.phone || '').toLowerCase().includes(query) ||
@@ -160,7 +195,7 @@ export default function DashboardPage() {
     );
   }, [data, searchQuery]);
 
-  const selectedUserData = useMemo(() => 
+  const selectedUserData = useMemo(() =>
     data.find(item => item.user._id === selectedUserId),
     [data, selectedUserId]
   );
@@ -181,10 +216,10 @@ export default function DashboardPage() {
   return (
     <div className="h-screen bg-[#0a0a0a] flex overflow-hidden font-sans text-white">
       {/* Left Sidebar */}
-      <Sidebar 
-        users={filteredData} 
-        selectedUserId={selectedUserId} 
-        onSelectUser={setSelectedUserId} 
+      <Sidebar
+        users={filteredData}
+        selectedUserId={selectedUserId}
+        onSelectUser={setSelectedUserId}
       />
 
       {/* Main Content Area */}
@@ -194,7 +229,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-6 flex-1">
             <div className="relative w-full max-w-md group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#ff6a00] transition-colors" />
-              <input 
+              <input
                 type="text"
                 placeholder="Search users by name, phone or city..."
                 value={searchQuery}
@@ -202,7 +237,7 @@ export default function DashboardPage() {
                 className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:border-[#ff6a00]/50 focus:ring-4 focus:ring-[#ff6a00]/5 transition-all"
               />
             </div>
-            <button 
+            <button
               onClick={fetchData}
               className="p-2.5 bg-[#1a1a1a] border border-[#222] hover:border-[#333] rounded-xl transition-all text-gray-400 hover:text-white"
               title="Refresh Data"
@@ -213,7 +248,7 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-4">
             <div className="h-8 w-[1px] bg-[#222] mx-2"></div>
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-4 py-2.5 bg-red-950/20 hover:bg-red-950/40 text-red-500 border border-red-900/30 rounded-xl text-xs font-bold transition-all"
             >
@@ -224,21 +259,23 @@ export default function DashboardPage() {
         </header>
 
         {/* Submissions List */}
-        <SubmissionList 
-          user={selectedUserData?.user} 
+        <SubmissionList
+          user={selectedUserData?.user}
           submissions={selectedUserData?.submissions || []}
           onSelectSubmission={setSelectedSubmission}
+          onBlockUser={handleBlockUser}
           onBulkAction={handleBulkAction}
         />
       </div>
 
       {/* Preview Modal */}
-      <PreviewModal 
+      <PreviewModal
         submission={selectedSubmission}
         user={selectedUserData?.user}
         onClose={() => setSelectedSubmission(null)}
         onReject={handleReject}
         onApprove={handleApprove}
+        onSaved={handleSubmissionSaved}
       />
 
       {/* Toast Notification */}
@@ -248,11 +285,10 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className={`fixed bottom-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border ${
-              showToast.type === 'success' 
-                ? 'bg-green-950 border-green-900 text-green-400' 
-                : 'bg-red-950 border-red-900 text-red-400'
-            }`}
+            className={`fixed bottom-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border ${showToast.type === 'success'
+              ? 'bg-green-950 border-green-900 text-green-400'
+              : 'bg-red-950 border-red-900 text-red-400'
+              }`}
           >
             {showToast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             <span className="text-sm font-bold">{showToast.message}</span>
@@ -267,7 +303,7 @@ export default function DashboardPage() {
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
             <h3 className="text-2xl font-bold text-white mb-2">Connection Error</h3>
             <p className="text-gray-400 mb-8">{error}</p>
-            <button 
+            <button
               onClick={fetchData}
               className="w-full bg-[#ff6a00] text-white font-bold py-4 rounded-2xl hover:bg-[#ff7a1a] transition-all"
             >
